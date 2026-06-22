@@ -1,4 +1,3 @@
-// Puntos asignados automáticamente por cada material detectado
 const PUNTOS_POR_MATERIAL = {
     "Plásticos": 50,
     "Papel y Cartón": 30,
@@ -7,19 +6,30 @@ const PUNTOS_POR_MATERIAL = {
     "Ninguno": 0
 };
 
-// Cargar estado inicial desde el almacenamiento local
+let pin = localStorage.getItem("pinEcoCocha") || "";
 let ecoCoins = Number(localStorage.getItem("ecoCoins")) || 0;
 let historial = JSON.parse(localStorage.getItem("historial")) || [];
 
-// Función única para refrescar visualmente la pantalla
+function guardarPin() {
+    const valor = document.getElementById("pinInput").value.trim();
+    if (valor.length < 4) {
+        alert("Escribe un código de al menos 4 dígitos");
+        return;
+    }
+    pin = valor;
+    localStorage.setItem("pinEcoCocha", pin);
+    document.getElementById("pinEstado").innerText = "✅ Conectado: " + pin;
+    escucharFirebase();
+}
+
 function actualizarInterfaz() {
     if (document.getElementById("coins")) {
-        document.getElementById("coins").innerText = ecoCoins; 
+        document.getElementById("coins").innerText = ecoCoins;
     }
 
     if (document.getElementById("lista")) {
         const listaHTML = document.getElementById("lista");
-        listaHTML.innerHTML = ""; // Limpia la lista antes de redibujar
+        listaHTML.innerHTML = "";
         historial.forEach(item => {
             listaHTML.innerHTML += `<li>${item}</li>`;
         });
@@ -42,30 +52,37 @@ function actualizarInterfaz() {
     }
 }
 
-// Dibujar la interfaz por primera vez al abrir el archivo
-actualizarInterfaz();
+function escucharFirebase() {
+    if (typeof db === "undefined" || !pin) return;
 
-// Escuchar Firebase en tiempo real para capturar detecciones de la cámara
-if (typeof db !== "undefined") {
-    db.ref("detecciones").on("child_added", (snapshot) => {
+    db.ref("usuarios/" + pin + "/detecciones").on("child_added", (snapshot) => {
         const nuevaDeteccion = snapshot.val();
         const registroUnico = `${nuevaDeteccion.fecha} - ${nuevaDeteccion.material}`;
 
-        // Evita duplicar registros que ya procesamos localmente
         if (!historial.includes(registroUnico)) {
             const puntosGanados = PUNTOS_POR_MATERIAL[nuevaDeteccion.material] || 0;
 
             if (puntosGanados > 0) {
                 ecoCoins += puntosGanados;
-                historial.unshift(registroUnico); // Agrega lo más nuevo arriba
+                historial.unshift(registroUnico);
 
-                // Guardar permanentemente en el navegador
                 localStorage.setItem("ecoCoins", ecoCoins);
                 localStorage.setItem("historial", JSON.stringify(historial));
 
-                // Actualizar lo que ve el usuario en pantalla
                 actualizarInterfaz();
             }
         }
     });
 }
+
+window.onload = () => {
+    actualizarInterfaz();
+
+    if (pin) {
+        if (document.getElementById("pinInput")) {
+            document.getElementById("pinInput").value = pin;
+            document.getElementById("pinEstado").innerText = "✅ Conectado: " + pin;
+        }
+        escucharFirebase();
+    }
+};
