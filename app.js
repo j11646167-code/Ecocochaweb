@@ -14,7 +14,7 @@ let historial = JSON.parse(localStorage.getItem("historial")) || [];
 // Función única para refrescar visualmente la pantalla
 function actualizarInterfaz() {
     if (document.getElementById("coins")) {
-        document.getElementById("coins").innerText = ecoCoins;
+        document.getElementById("coins").innerText = ecoCoins; 
     }
 
     if (document.getElementById("lista")) {
